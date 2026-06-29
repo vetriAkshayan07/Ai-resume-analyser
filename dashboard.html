@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard – RecruitAI{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Welcome back, {{ session.get('admin_name', 'Admin') }}{% endblock %}
+
+{% block content %}
+
+<!-- ======= KPI CARDS ======= -->
+<div class="row g-3 mb-4">
+
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card">
+      <div>
+        <div class="stat-label">Total Resumes</div>
+        <div class="stat-value">{{ stats.total_resumes }}</div>
+        <div class="stat-sub">Candidates in system</div>
+      </div>
+      <div class="stat-icon icon-blue"><i class="bi bi-file-earmark-person"></i></div>
+    </div>
+  </div>
+
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card">
+      <div>
+        <div class="stat-label">Avg Match Score</div>
+        <div class="stat-value">{{ stats.avg_score }}%</div>
+        <div class="stat-sub">Across all screenings</div>
+      </div>
+      <div class="stat-icon icon-teal"><i class="bi bi-percent"></i></div>
+    </div>
+  </div>
+
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card">
+      <div>
+        <div class="stat-label">Top Candidate</div>
+        <div class="stat-value" style="font-size:18px; margin-top:4px;">
+          {% if stats.top_candidate %}
+            {{ stats.top_candidate.name[:14] }}{% if stats.top_candidate.name|length > 14 %}…{% endif %}
+          {% else %}—{% endif %}
+        </div>
+        <div class="stat-sub">
+          {% if stats.top_candidate %}{{ stats.top_candidate.match_score }}% match{% endif %}
+        </div>
+      </div>
+      <div class="stat-icon icon-gold"><i class="bi bi-trophy"></i></div>
+    </div>
+  </div>
+
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card">
+      <div>
+        <div class="stat-label">Unique Skills</div>
+        <div class="stat-value">{{ stats.top_skills | length }}</div>
+        <div class="stat-sub">Detected across resumes</div>
+      </div>
+      <div class="stat-icon icon-green"><i class="bi bi-stars"></i></div>
+    </div>
+  </div>
+
+</div><!-- /KPI row -->
+
+<!-- ======= CHARTS ROW ======= -->
+<div class="row g-3 mb-4">
+
+  <div class="col-lg-7">
+    <div class="chart-card">
+      <div class="chart-title">
+        <i class="bi bi-bar-chart me-2 text-primary"></i>Top Candidate Match Scores
+      </div>
+      <div style="position:relative; height:260px;">
+        <canvas id="matchChart"
+          data-labels='{{ stats.chart_data | map(attribute="name") | list | tojson }}'
+          data-scores='{{ stats.chart_data | map(attribute="match_score") | list | tojson }}'>
+        </canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="chart-card">
+      <div class="chart-title">
+        <i class="bi bi-pie-chart me-2 text-primary"></i>Top Skills Distribution
+      </div>
+      <div style="position:relative; height:260px;">
+        <canvas id="skillsChart"
+          data-labels='{{ stats.top_skills | map(attribute=0) | list | tojson }}'
+          data-counts='{{ stats.top_skills | map(attribute=1) | list | tojson }}'>
+        </canvas>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ======= QUICK ACTIONS ======= -->
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="card p-3">
+      <div style="font-size:14px; font-weight:700; color:#1a1a2e; margin-bottom:14px;">
+        <i class="bi bi-lightning-charge me-2 text-primary"></i>Quick Actions
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a href="{{ url_for('upload') }}" class="btn-primary-custom">
+          <i class="bi bi-cloud-upload"></i> Upload Resumes
+        </a>
+        <a href="{{ url_for('results') }}" class="btn-outline-custom">
+          <i class="bi bi-people"></i> View Candidates
+        </a>
+        <a href="{{ url_for('generate_pdf') }}" class="btn-outline-custom">
+          <i class="bi bi-file-pdf"></i> Download PDF Report
+        </a>
+        <a href="{{ url_for('generate_excel') }}" class="btn-outline-custom">
+          <i class="bi bi-file-excel"></i> Download Excel Report
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======= TOP SKILLS TABLE ======= -->
+{% if stats.top_skills %}
+<div class="row g-3">
+  <div class="col-lg-5">
+    <div class="card p-3">
+      <div style="font-size:14px; font-weight:700; color:#1a1a2e; margin-bottom:14px;">
+        <i class="bi bi-tags me-2 text-primary"></i>Most Common Skills
+      </div>
+      {% for skill, count in stats.top_skills %}
+      <div class="d-flex align-items-center justify-content-between mb-2">
+        <span class="skill-tag">{{ skill }}</span>
+        <div style="flex:1; margin:0 12px;">
+          <div class="match-progress">
+            <div class="match-progress-bar" data-score="{{ (count / (stats.top_skills[0][1] or 1)) * 100 }}"></div>
+          </div>
+        </div>
+        <span style="font-size:12px; color:#666; font-weight:600; min-width:24px; text-align:right;">{{ count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if stats.chart_data %}
+  <div class="col-lg-7">
+    <div class="card p-3">
+      <div style="font-size:14px; font-weight:700; color:#1a1a2e; margin-bottom:14px;">
+        <i class="bi bi-trophy me-2 text-warning"></i>Top Ranked Candidates
+      </div>
+      <table class="table table-styled mb-0">
+        <thead>
+          <tr>
+            <th>Rank</th><th>Name</th><th>Match Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for c in stats.chart_data %}
+          <tr>
+            <td>
+              <span class="candidate-rank" style="width:26px;height:26px;font-size:11px;">{{ loop.index }}</span>
+            </td>
+            <td style="font-weight:600;">{{ c.name }}</td>
+            <td>
+              <span class="match-badge {% if c.match_score >= 70 %}match-high{% elif c.match_score >= 40 %}match-medium{% else %}match-low{% endif %}">
+                {{ c.match_score }}%
+              </span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}
+
+{% endblock %}
