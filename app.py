@@ -2,7 +2,7 @@ import os
 import json
 from flask import (
     Flask, render_template, request, redirect, url_for,
-    session, flash, jsonify, send_file
+    session, flash, jsonify, send_file, send_from_directory
 )
 from werkzeug.utils import secure_filename
 from config import Config
@@ -17,7 +17,15 @@ from models.report import generate_pdf_report, generate_excel_report
 # ---------------------------------------------------------------------------
 # App setup
 # ---------------------------------------------------------------------------
-app = Flask(__name__)
+app = Flask(__name__, template_folder=".", static_folder=".", static_url_path="")
+
+@app.route('/css/<path:filename>')
+def serve_css(filename):
+    return send_from_directory(os.path.join(app.root_path, 'css'), filename)
+
+@app.route('/js/<path:filename>')
+def serve_js(filename):
+    return send_from_directory(os.path.join(app.root_path, 'js'), filename)
 app.config.from_object(Config)
 app.secret_key = Config.SECRET_KEY
 
@@ -428,4 +436,4 @@ def delete_candidate(candidate_id):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=False, use_reloader=False, host="0.0.0.0", port=5000)
