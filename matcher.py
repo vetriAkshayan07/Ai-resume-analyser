@@ -1,6 +1,6 @@
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+import math
 import re
+from collections import Counter
 
 
 def preprocess_text(text: str) -> str:
@@ -11,24 +11,52 @@ def preprocess_text(text: str) -> str:
     return text
 
 
+def _token_counter(text: str) -> Counter:
+    return Counter(preprocess_text(text).split())
+
+
 def calculate_match_score(resume_text: str, jd_text: str) -> float:
     """
-    Calculate the cosine similarity between a resume and a job description
-    using TF-IDF vectors. Returns a percentage (0-100).
+    Calculate a lightweight cosine similarity score between a resume and job description.
+    Returns a percentage (0-100).
     """
     if not resume_text or not jd_text:
         return 0.0
 
-    clean_resume = preprocess_text(resume_text)
-    clean_jd = preprocess_text(jd_text)
+    jd_counter = _token_counter(jd_text)
+    resume_counter = _token_counter(resume_text)
 
-    vectorizer = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
-    try:
-        tfidf_matrix = vectorizer.fit_transform([clean_jd, clean_resume])
-        score = cosine_similarity(tfidf_matrix[0:1], tfidf_matrix[1:2])[0][0]
-        return round(float(score) * 100, 2)
-    except Exception:
+    if not jd_counter or not resume_counter:
         return 0.0
+
+    all_tokens = set(jd_counter) | set(resume_counter)
+    if not all_tokens:
+        return 0.0
+
+    document_count = 2
+    df = {token: 0 for token in all_tokens}
+    for token in all_tokens:
+        if token in jd_counter:
+            df[token] += 1
+        if token in resume_counter:
+            df[token] += 1
+
+    jd_tfidf = {}
+    resume_tfidf = {}
+    for token in all_tokens:
+        idf = math.log((1 + document_count) / (1 + df[token])) + 1.0
+        jd_tfidf[token] = jd_counter[token] * idf
+        resume_tfidf[token] = resume_counter[token] * idf
+
+    dot_product = sum(jd_tfidf[token] * resume_tfidf[token] for token in all_tokens)
+    jd_norm = math.sqrt(sum(value * value for value in jd_tfidf.values()))
+    resume_norm = math.sqrt(sum(value * value for value in resume_tfidf.values()))
+
+    if jd_norm == 0 or resume_norm == 0:
+        return 0.0
+
+    score = dot_product / (jd_norm * resume_norm)
+    return round(float(score) * 100, 2)
 
 
 def rank_candidates(candidates: list) -> list:
