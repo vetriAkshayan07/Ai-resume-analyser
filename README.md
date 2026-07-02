@@ -11,24 +11,24 @@ An AI-powered web application that parses resumes, matches them against job desc
 - Paste or upload a Job Description
 - TF-IDF cosine-similarity matching score per candidate
 - Ranked candidate list (highest match first)
-- AI-generated summaries (via Claude API or rule-based fallback)
+- AI-generated summaries (via Claude API, with a rule-based fallback if no key is set)
 - Filter by skills, experience, education, certification, location
 - Sort by match score, experience, name
 - Global search across name/email/skills
 - PDF and Excel report download
-- Dashboard with Chart.js statistics
-- SQLite database – zero external DB setup
+- Dashboard with statistics
+- SQLite database — zero external DB setup
 
 ---
 
 ## Tech Stack
 
 | Layer    | Technology                              |
-|----------|-----------------------------------------|
+|----------|------------------------------------------|
 | Backend  | Python 3.12, Flask                      |
 | Database | SQLite                                  |
-| Frontend | HTML5, Bootstrap 5, Chart.js            |
-| NLP      | scikit-learn TF-IDF, pdfplumber, docx   |
+| Frontend | HTML5, CSS, JavaScript                  |
+| NLP      | scikit-learn TF-IDF, pdfplumber, python-docx |
 | AI       | Anthropic Claude API (optional)         |
 | Reports  | ReportLab (PDF), openpyxl (Excel)       |
 
@@ -39,8 +39,8 @@ An AI-powered web application that parses resumes, matches them against job desc
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/AI-Resume-Screening-System.git
-cd AI-Resume-Screening-System
+git clone https://github.com/your-username/Ai-resume-analyser.git
+cd Ai-resume-analyser
 ```
 
 ### 2. Create and activate a virtual environment
@@ -77,7 +77,7 @@ set ANTHROPIC_API_KEY=sk-ant-your-key-here
 export ANTHROPIC_API_KEY=sk-ant-your-key-here
 ```
 
-If you skip this step, the system uses a rule-based summary fallback — everything else works identically.
+If you skip this step, the system falls back to rule-based summaries — everything else works identically.
 
 ### 5. Run the application
 
@@ -93,10 +93,9 @@ Open your browser and navigate to: **http://127.0.0.1:5000**
 
 ```python
 # Install dependencies
-!pip install flask pdfplumber python-docx scikit-learn reportlab openpyxl anthropic werkzeug
+!pip install flask pdfplumber python-docx scikit-learn reportlab openpyxl anthropic werkzeug gunicorn
 
-# Mount if needed or upload files directly
-# Then run with pyngrok for public URL:
+# Upload the project files/folder to Colab first, then run with pyngrok for a public URL:
 !pip install pyngrok
 from pyngrok import ngrok
 import threading, subprocess
@@ -115,37 +114,40 @@ print("Public URL:", public_url)
 
 ## Folder Structure
 
+Flask is configured with `template_folder="."` and `static_folder="."`, so HTML, CSS, and JS live at the project root rather than in separate `templates/`/`static/` directories. `/css` and `/js` are served via custom routes in `app.py`.
+
 ```
-AI-Resume-Screening-System/
-├── app.py                  # Main Flask application
-├── config.py               # Configuration (paths, keys)
-├── requirements.txt        # Python dependencies
+Ai-resume-analyser/
+├── app.py                  # Main Flask application & routes
+├── config.py                # Configuration (paths, secret key, upload limits)
+├── requirements.txt         # Python dependencies
+├── render.yaml               # Render.com deployment config
 ├── README.md
-├── .gitignore
-├── database/               # SQLite database (auto-created)
-├── uploads/                # Uploaded resume files
-├── reports/                # Generated PDF/Excel reports
+├── base.html                 # Shared layout template
+├── login.html
+├── register.html
+├── dashboard.html
+├── upload.html
+├── results.html
+├── report.html
+├── style.css / css/style.css
+├── script.js / js/script.js
+├── database.py               # (root-level copy)
+├── parser.py, matcher.py, summarizer.py, filter.py, report.py, auth.py
 ├── models/
-│   ├── auth.py             # Registration & login
-│   ├── database.py         # Schema & connection
-│   ├── filter.py           # Filtering & sorting logic
-│   ├── matcher.py          # TF-IDF matching & ranking
-│   ├── parser.py           # PDF/DOCX parsing & NLP extraction
-│   ├── report.py           # PDF & Excel generation
-│   └── summarizer.py       # AI summary (Claude API / fallback)
-├── static/
-│   ├── css/style.css
-│   └── js/script.js
-├── templates/
-│   ├── base.html
-│   ├── login.html
-│   ├── register.html
-│   ├── dashboard.html
-│   ├── upload.html
-│   ├── results.html
-│   └── report.html
-└── utils/
+│   ├── database.py           # Schema & connection
+│   ├── auth.py                # Registration & login
+│   ├── parser.py              # PDF/DOCX parsing & NLP extraction
+│   ├── matcher.py             # TF-IDF matching & ranking
+│   ├── summarizer.py          # AI summary (Claude API / fallback)
+│   ├── filter.py               # Filtering & sorting logic
+│   └── report.py               # PDF & Excel generation
+├── database/                 # SQLite database (auto-created)
+├── uploads/                  # Uploaded resume files (auto-created)
+└── reports/                  # Generated PDF/Excel reports (auto-created)
 ```
+
+> **Note:** The repo currently has duplicate copies of several modules (e.g. `parser.py`, `matcher.py`) at both the project root and inside `models/`. `app.py` imports from `models.*`, so the `models/` versions are the ones actually in use — the root-level copies appear to be leftovers and can likely be removed once confirmed unused.
 
 ---
 
@@ -159,19 +161,23 @@ AI-Resume-Screening-System/
 6. Upload one or more resume files (PDF/DOCX)
 7. Click **Start AI Screening**
 8. View ranked candidates on the **Candidates** page
-9. Use filters/search to narrow down
+9. Use filters/search to narrow results
 10. Download reports from the **Reports** page
 
 ---
 
-## Screenshots
+## Deployment
 
-> _Add screenshots of Dashboard, Upload, Results, and Report pages here._
+A `render.yaml` is included for one-click deployment on [Render](https://render.com):
+- Build command: `pip install -r requirements.txt`
+- Start command: `gunicorn app:app`
+- Set `ANTHROPIC_API_KEY` and a strong `SECRET_KEY` as environment variables in the Render dashboard rather than relying on the defaults in the repo.
 
 ---
 
 ## Future Improvements
 
+- Clean up duplicate root/`models/` module copies
 - Email shortlisted candidates directly from the app
 - Multi-user roles (recruiter, viewer)
 - Integration with LinkedIn / job board APIs
